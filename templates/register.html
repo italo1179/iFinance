@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iFinance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='ifinance.ico') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='ifinance.ico') }}">
+</head>
+<body>
+  <div class="container">
+    <div style="text-align:center; margin-bottom:20px;">
+      <img src="{{ url_for('static', filename='ifinance.ico') }}" alt="iFinance" style="width:64px; height:64px; border-radius:12px;">
+    </div>
+    <h1 style="text-align:center;">Criar conta</h1>
+    <p style="text-align:center;">Crie sua conta para salvar seus lançamentos no banco e acessar no celular e no PC.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat,msg in messages %}
+          <div class="alert {% if cat=='error' %}alert-error{% elif cat=='ok' %}alert-ok{% else %}alert-info{% endif %}">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <label for="nome">Nome de usuário</label>
+      <input id="nome" name="nome" type="text" required autocomplete="name" />
+
+      <div style="height:12px;"></div>
+
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required autocomplete="email" />
+
+      <div style="height:12px;"></div>
+
+      <label for="password">Senha (mínimo 6 caracteres)</label>
+      <input id="password" name="password" type="password" required autocomplete="new-password" />
+
+      <div style="height:12px;"></div>
+
+      <label for="password2">Confirmar senha</label>
+      <input id="password2" name="password2" type="password" required autocomplete="new-password" />
+
+      <button type="submit">Criar e entrar</button>
+    </form>
+
+    <p class="hint" style="text-align:center;">
+      Já tem conta?
+      <a href="{{ url_for('login') }}">Entrar</a>
+    </p>
+  </div>
+</body>
+</html>

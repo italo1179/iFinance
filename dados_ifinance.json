@@ -1,0 +1,68 @@
+{
+  "next_id": 13,
+  "transacoes": [
+    {
+      "id": 4,
+      "descricao": "Calça guth",
+      "valor_total": -263.31,
+      "tipo": "saida",
+      "data": "2025-09-30",
+      "parcelas": 6,
+      "valor_parcela": -43.885
+    },
+    {
+      "id": 5,
+      "descricao": "Club del nuit",
+      "valor_total": -285.3,
+      "tipo": "saida",
+      "data": "2025-09-30",
+      "parcelas": 6,
+      "valor_parcela": -47.550000000000004
+    },
+    {
+      "id": 6,
+      "descricao": "tenis",
+      "valor_total": -201.09,
+      "tipo": "saida",
+      "data": "2025-11-01",
+      "parcelas": 2,
+      "valor_parcela": -100.545
+    },
+    {
+      "id": 8,
+      "descricao": "salario",
+      "valor_total": 240.0,
+      "tipo": "entrada",
+      "data": "2025-10-30",
+      "parcelas": 1,
+      "valor_parcela": 240.0
+    },
+    {
+      "id": 9,
+      "descricao": "salario",
+      "valor_total": 800.0,
+      "tipo": "entrada",
+      "data": "2025-11-28",
+      "parcelas": 1,
+      "valor_parcela": 800.0
+    },
+    {
+      "id": 10,
+      "descricao": "ssd",
+      "valor_total": -532.8,
+      "tipo": "saida",
+      "data": "2025-11-01",
+      "parcelas": 2,
+      "valor_parcela": -266.4
+    },
+    {
+      "id": 11,
+      "descricao": "Calça TNB",
+      "valor_total": -270.0,
+      "tipo": "saida",
+      "data": "2025-11-01",
+      "parcelas": 2,
+      "valor_parcela": -135.0
+    }
+  ]
+}

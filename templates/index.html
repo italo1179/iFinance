@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iFinance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='ifinance.ico') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='ifinance.ico') }}">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="navbar-left">
+      <a href="{{ url_for('home') }}" class="brand-link" title="Ir para o início">
+        <img class="navbar-icon" src="{{ url_for('static', filename='ifinance.ico') }}" alt="iFinance">
+        <span class="navbar-title">iFinance</span>
+      </a>
+    </div>
+
+    <div class="navbar-right">
+      <a href="{{ url_for('perfil') }}" style="display:flex; align-items:center; gap:8px; text-decoration:none; color:inherit;" title="Meu perfil">
+        {% if current_user.foto_perfil %}
+          <img src="{{ url_for('static', filename='uploads/' + current_user.foto_perfil) }}" alt="Foto" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.2);">
+        {% else %}
+          <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; color:#fff; border:2px solid rgba(255,255,255,.2);">
+            {{ current_user.nome[0].upper() if current_user.nome else 'U' }}
+          </div>
+        {% endif %}
+        <span class="navbar-email"><b>{{ current_user.nome }}</b></span>
+      </a>
+      <a class="btn btn-light" href="{{ url_for('logout') }}" style="text-decoration:none;">Sair</a>
+    </div>
+  </nav>
+
+  <!-- Linha abaixo da navbar -->
+  <div class="topline">
+    <div class="topline-left">
+      <span class="label" style="font-weight:800;">Seus dados são sincronizados por usuário!</span>
+    </div>
+
+    <div class="topline-right">
+      <form method="GET" id="formMesAno">
+        <span class="label" style="opacity:.9;font-weight:800;">Resumo do mês:</span>
+
+        <select name="mes" aria-label="Mês" onchange="document.getElementById('formMesAno').submit()">
+          {% for m in meses_dropdown %}
+            <option value="{{ m }}" {% if m == mes_sel %}selected{% endif %}>{{ "%02d"|format(m) }}</option>
+          {% endfor %}
+        </select>
+
+        <select name="ano" aria-label="Ano" onchange="document.getElementById('formMesAno').submit()">
+          {% for y in anos_dropdown %}
+            <option value="{{ y }}" {% if y == ano_sel %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+        </select>
+
+        <!-- ✅ categoria opcional (só muda o card vermelho) -->
+        <select name="categoria" aria-label="Categoria" onchange="document.getElementById('formMesAno').submit()">
+          <option value="">Todas as categorias</option>
+          {% for c in categorias %}
+            <option value="{{ c.id }}" {% if categoria_sel and c.id == categoria_sel %}selected{% endif %}>
+              {{ c.nome }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <input type="hidden" name="busca" value="{{ busca }}">
+      </form>
+    </div>
+  </div>
+
+  <div class="app-shell">
+
+    <!-- Cards -->
+    <section class="cards-row">
+      <div class="card card-green">
+        <div class="card-title">Entradas</div>
+        <div class="card-value">R$ {{ "%.2f"|format(total_entradas) }}</div>
+      </div>
+
+      <div class="card card-red">
+        <div class="card-title">Saídas{% if categoria_sel %} (categoria){% endif %}</div>
+        <div class="card-value">R$ {{ "%.2f"|format(total_saidas) }}</div>
+      </div>
+
+      <div class="card card-blue">
+        <div class="card-title">Saldo</div>
+        <div class="card-value">R$ {{ "%.2f"|format(saldo) }}</div>
+      </div>
+    </section>
+
+    <!-- Tabela -->
+    <section class="panel panel-table">
+      <div class="table-toolbar">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div class="table-title">Lançamentos</div>
+          <a href="{{ url_for('home', mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca, pagos='0') }}" 
+             class="btn btn-light" style="font-size:12px; padding:6px 10px; {% if not mostrar_pagos %}background:#2563eb; color:#fff;{% endif %}">Ativas</a>
+          <a href="{{ url_for('home', mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca, pagos='1') }}" 
+             class="btn btn-light" style="font-size:12px; padding:6px 10px; {% if mostrar_pagos %}background:#2563eb; color:#fff;{% endif %}">Pagos</a>
+        </div>
+
+        <form method="GET" class="search" title="Pesquisar">
+          <input type="hidden" name="mes" value="{{ mes_sel }}">
+          <input type="hidden" name="ano" value="{{ ano_sel }}">
+          <input type="hidden" name="categoria" value="{{ categoria_sel if categoria_sel else '' }}">
+          <input type="hidden" name="pagos" value="{{ '1' if mostrar_pagos else '0' }}">
+          <input type="text" name="busca" placeholder="Pesquisar descrição..." value="{{ busca }}" />
+          <button type="submit" class="btn btn-light">Buscar</button>
+          <button type="button" class="btn-filtro {% if filtro_tipo or categorias_incluir or categorias_excluir %}filtro-ativo{% endif %}" onclick="openFiltrosModal()" title="Filtros avançados">
+            <img src="{{ url_for('static', filename='funil.ico') }}" alt="Filtros" style="width:18px; height:18px;">
+            {% if filtro_tipo or categorias_incluir or categorias_excluir %}
+            <span class="filtro-badge">!</span>
+            {% endif %}
+          </button>
+        </form>
+      </div>
+
+      <div class="table-wrap">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th class="col-center sortable" onclick="ordenar('data')">
+                Data 
+                {% if ordenar_por == 'data' %}
+                  <span class="sort-arrow">{{ '↓' if ordem == 'desc' else '↑' }}</span>
+                {% endif %}
+              </th>
+              <th class="sortable" onclick="ordenar('descricao')">
+                Descrição 
+                {% if ordenar_por == 'descricao' %}
+                  <span class="sort-arrow">{{ '↓' if ordem == 'desc' else '↑' }}</span>
+                {% endif %}
+              </th>
+              <th class="col-center sortable" onclick="ordenar('categoria')">
+                Categoria 
+                {% if ordenar_por == 'categoria' %}
+                  <span class="sort-arrow">{{ '↓' if ordem == 'desc' else '↑' }}</span>
+                {% endif %}
+              </th>
+              <th class="col-center sortable" onclick="ordenar('parcelas')">
+                Parcelas 
+                {% if ordenar_por == 'parcelas' %}
+                  <span class="sort-arrow">{{ '↓' if ordem == 'desc' else '↑' }}</span>
+                {% endif %}
+              </th>
+              <th class="col-center">Parcela (R$)</th>
+              <th class="col-center sortable" onclick="ordenar('valor_total')">
+                Valor total (R$) 
+                {% if ordenar_por == 'valor_total' %}
+                  <span class="sort-arrow">{{ '↓' if ordem == 'desc' else '↑' }}</span>
+                {% endif %}
+              </th>
+              <th class="col-center">Tipo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if transacoes %}
+              {% for t in transacoes %}
+                <tr class="row-select"
+                    data-id="{{ t.id }}"
+                    data-descricao="{{ t.descricao }}"
+                    data-valor="{{ (t.valor_total if t.valor_total >= 0 else (t.valor_total * -1)) }}"
+                    data-tipo="{{ 'entrada' if t.valor_total >= 0 else 'saida' }}"
+                    data-data="{{ t.data.strftime('%Y-%m-%d') }}"
+                    data-parcelas="{{ t.parcelas }}"
+                    data-categoria="{{ t.categoria_id if t.categoria_id else '' }}"
+                    data-observacoes="{{ t.observacoes if t.observacoes else '' }}"
+                    data-categoria-nome="{{ t.categoria_nome if t.categoria_nome else 'Sem categoria' }}"
+                    data-valor-parcela="{{ '%.2f'|format(t.valor_parcela) }}"
+                    data-valor-total="{{ '%.2f'|format(t.valor_total) }}"
+                    data-recorrente="{{ 'true' if t.recorrente else 'false' }}">
+                  <td class="col-center">{{ t.data.strftime('%d/%m/%Y') }}</td>
+                  <td class="desc">
+                    {{ t.descricao }}
+                    {% if t.recorrente %}
+                      <span style="background:#8b5cf6; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:800; margin-left:6px;" title="Mensalidade recorrente">🔁</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-center">{{ t.categoria_nome if t.categoria_nome else "-" }}</td>
+                  <td class="col-center">
+                    {% if t.recorrente %}
+                      <span title="Cobrança recorrente (infinito)" style="font-size:18px;">∞</span>
+                    {% else %}
+                      {{ t.parcelas }}
+                    {% endif %}
+                  </td>
+                  <td class="col-center">{{ "%.2f"|format(t.valor_parcela) }}</td>
+                  <td class="col-center">{{ "%.2f"|format(t.valor_total) }}</td>
+                  <td class="col-center">
+                    {% if t.valor_total >= 0 %}Entrada{% else %}Saída{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="7" class="empty">Nenhuma transação cadastrada (ou a busca não encontrou).</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Paginação -->
+      {% if total_paginas > 1 %}
+      <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:14px; padding:10px;">
+        {% if pagina > 1 %}
+          <a href="{{ url_for('home', mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca, pagos=('1' if mostrar_pagos else '0'), pagina=pagina-1) }}" class="btn btn-light" style="padding:6px 12px;">← Anterior</a>
+        {% else %}
+          <button class="btn btn-light" style="padding:6px 12px; opacity:.5;" disabled>← Anterior</button>
+        {% endif %}
+
+        <span style="font-weight:800; font-size:14px;">Página {{ pagina }} de {{ total_paginas }}</span>
+
+        {% if pagina < total_paginas %}
+          <a href="{{ url_for('home', mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca, pagos=('1' if mostrar_pagos else '0'), pagina=pagina+1) }}" class="btn btn-light" style="padding:6px 12px;">Próxima →</a>
+        {% else %}
+          <button class="btn btn-light" style="padding:6px 12px; opacity:.5;" disabled>Próxima →</button>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Ações -->
+      <div class="bottom-actions" style="justify-content: space-between;">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary" onclick="openAddModal()">+</button>
+
+          <button type="button" class="btn btn-light" id="btnEditarSelecionado" disabled onclick="openEditModal()">
+            Editar
+          </button>
+
+          {% if not mostrar_pagos %}
+          <form id="formMarcarPago" method="POST" style="margin:0;">
+            <button type="submit" class="btn btn-light" id="btnMarcarPago" disabled style="background:#16a34a; color:#fff;">
+              ✅ Já pago
+            </button>
+          </form>
+          {% endif %}
+
+          <button type="button" class="btn btn-light" onclick="openCategoriasModal()" style="background:#8b5cf6; color:#fff;">
+            📋 Categorias
+          </button>
+
+          <button type="button" class="btn btn-light" onclick="openSalariosModal()" style="background:#16a34a; color:#fff;">
+            💵 Salários
+          </button>
+        </div>
+
+        <form id="formRemoveSelecionado" method="POST" style="margin:0;">
+          <button type="submit" class="btn btn-danger" id="btnRemoverSelecionado" disabled style="background:#dc2626; color:#fff;">
+            🗑️ Remover
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Gráfico -->
+    <section class="panel panel-chart">
+      <div class="chart-title" style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span>Entradas x Despesas por mês</span>
+
+        <label style="font-weight:800;font-size:13px;opacity:.9;">
+          Modo:
+          <select id="modoGrafico" style="margin-left:8px; padding:6px 10px; border-radius:8px;">
+            <option value="separado" selected>Separado (Entradas + Despesas)</option>
+            <option value="saldo">Junto (Saldo do mês)</option>
+            <option value="mov">Junto (Movimentação total)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="graficoDespesas"></canvas>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">Nova transação</div>
+        <button class="icon-btn" type="button" aria-label="Fechar" onclick="closeModal()">✕</button>
+      </div>
+
+      <form method="POST" class="modal-body" id="formTransacao">
+        <div class="field">
+          <label for="descricao">Descrição</label>
+          <input type="text" id="descricao" name="descricao" required />
+        </div>
+
+        <!-- ✅ categoria no cadastro/edição -->
+        <div class="field">
+          <label for="categoria_id">Categoria</label>
+          <select id="categoria_id" name="categoria_id">
+            <option value="">Sem categoria</option>
+            {% for c in categorias %}
+              <option value="{{ c.id }}">{{ c.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="valor">Valor total (R$)</label>
+          <input type="number" step="0.01" id="valor" name="valor" required />
+        </div>
+
+        <div class="row-3">
+          <div class="field">
+            <label for="data">Data</label>
+            <input type="date" id="data" name="data" required />
+          </div>
+
+        <div class="field">
+          <label for="parcelas">Parcelas</label>
+          <input type="number" id="parcelas" name="parcelas" min="1" value="1" />
+        </div>
+
+        <div class="field">
+          <label for="tipo">Tipo</label>
+          <select id="tipo" name="tipo" required>
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="recorrente" name="recorrente" style="width:18px; height:18px; cursor:pointer;">
+          <span>🔁 Mensalidade recorrente (cobra todo mês)</span>
+        </label>
+        <p style="font-size:12px; color:var(--muted); margin:6px 0 0;">Marque se este item é uma assinatura mensal (Netflix, Spotify, etc.)</p>
+      </div>
+
+      <div class="field">
+        <label for="observacoes">Observações (opcional)</label>
+        <textarea id="observacoes" name="observacoes" rows="3" style="resize:vertical;"></textarea>
+      </div>
+
+      <div class="modal-actions">
+          <button type="button" class="btn btn-light" onclick="closeModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Rodapé -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>iFinance</h3>
+        <p>Controle suas finanças de forma simples e eficiente.</p>
+      </div>
+      <div class="footer-section">
+        <h4>Links</h4>
+        <ul>
+          <li><a href="{{ url_for('home') }}">Início</a></li>
+          <li><a href="javascript:openCategoriasModal()">Categorias</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>Informações</h4>
+        <p style="font-size:12px; opacity:.8; margin:0;">© 2025 iFinance Web</p>
+        <p style="font-size:12px; opacity:.8; margin:4px 0 0;">Versão 2.0</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Modal de Filtros Avançados -->
+  <div class="modal-backdrop" id="modalFiltros" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">📊 Filtros Avançados</div>
+        <button class="icon-btn" type="button" aria-label="Fechar" onclick="closeFiltrosModal()">✕</button>
+      </div>
+
+      <form method="GET" class="modal-body">
+        <input type="hidden" name="mes" value="{{ mes_sel }}">
+        <input type="hidden" name="ano" value="{{ ano_sel }}">
+        <input type="hidden" name="busca" value="{{ busca }}">
+        <input type="hidden" name="pagos" value="{{ '1' if mostrar_pagos else '0' }}">
+
+        <!-- Filtro por tipo -->
+        <div class="field">
+          <label>Tipo de transação</label>
+          <select name="filtro_tipo">
+            <option value="" {% if not filtro_tipo %}selected{% endif %}>Todos (Entrada + Saída)</option>
+            <option value="entrada" {% if filtro_tipo == 'entrada' %}selected{% endif %}>Somente Entradas</option>
+            <option value="saida" {% if filtro_tipo == 'saida' %}selected{% endif %}>Somente Saídas</option>
+          </select>
+        </div>
+
+        <!-- Filtro incluir categorias -->
+        <div class="field">
+          <label>Incluir apenas estas categorias</label>
+          <div style="max-height:150px; overflow-y:auto; border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:8px; background:rgba(0,0,0,.2);">
+            {% if categorias %}
+              {% for c in categorias %}
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
+                  <input type="checkbox" name="cat_incluir_check" value="{{ c.id }}" 
+                         {% if c.id in categorias_incluir %}checked{% endif %}
+                         style="width:16px; height:16px; cursor:pointer;">
+                  <span style="font-size:14px;">{{ c.nome }}</span>
+                </label>
+              {% endfor %}
+            {% else %}
+              <p style="color:var(--muted); font-size:13px; margin:0;">Nenhuma categoria cadastrada</p>
+            {% endif %}
+          </div>
+          <p style="font-size:12px; color:var(--muted); margin:6px 0 0;">Deixe em branco para incluir todas</p>
+        </div>
+
+        <!-- Filtro excluir categorias -->
+        <div class="field">
+          <label>Excluir estas categorias</label>
+          <div style="max-height:150px; overflow-y:auto; border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:8px; background:rgba(0,0,0,.2);">
+            {% if categorias %}
+              {% for c in categorias %}
+                <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px; cursor:pointer;">
+                  <input type="checkbox" name="cat_excluir_check" value="{{ c.id }}" 
+                         {% if c.id in categorias_excluir %}checked{% endif %}
+                         style="width:16px; height:16px; cursor:pointer;">
+                  <span style="font-size:14px;">{{ c.nome }}</span>
+                </label>
+              {% endfor %}
+            {% else %}
+              <p style="color:var(--muted); font-size:13px; margin:0;">Nenhuma categoria cadastrada</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-light" onclick="limparFiltros()">Limpar filtros</button>
+          <button type="submit" class="btn btn-primary">Aplicar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de Salários -->
+  <div class="modal-backdrop" id="modalSalarios" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">💵 Gerenciar Salários</div>
+        <button class="icon-btn" type="button" aria-label="Fechar" onclick="closeSalariosModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Abas -->
+        <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom:2px solid rgba(255,255,255,.1);">
+          <button type="button" class="tab-btn active" onclick="switchTabSalario('automatico')" id="tabAutomatico" style="padding:10px 16px; background:transparent; border:0; border-bottom:3px solid #16a34a; color:var(--text); font-weight:800; cursor:pointer;">
+            🔁 Salário Automático
+          </button>
+          <button type="button" class="tab-btn" onclick="switchTabSalario('manual')" id="tabManual" style="padding:10px 16px; background:transparent; border:0; border-bottom:3px solid transparent; color:var(--muted); font-weight:800; cursor:pointer;">
+            ✍️ Entrada Manual
+          </button>
+        </div>
+
+        <!-- Aba: Salário Automático -->
+        <div id="abaAutomatico" style="display:block;">
+          <p style="font-size:13px; color:var(--muted); margin:0 0 14px; line-height:1.5;">
+            Cadastre salários ou rendas fixas mensais. Eles serão contabilizados nas entradas mas não aparecerão na lista principal.
+          </p>
+
+          <form method="POST" action="{{ url_for('cadastrar_salario') }}" style="margin-bottom:20px;">
+          <div class="field">
+            <label for="descricaoSalario">Descrição</label>
+            <input type="text" id="descricaoSalario" name="descricao" placeholder="Ex: Salário CLT, Freela, etc." required>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px;">
+            <div class="field">
+              <label for="valorSalario">Valor mensal (R$)</label>
+              <input type="number" step="0.01" id="valorSalario" name="valor" placeholder="0.00" required>
+            </div>
+
+            <div class="field">
+              <label for="diaPagamento">Dia do pagamento</label>
+              <input type="number" id="diaPagamento" name="dia_pagamento" min="1" max="28" value="5" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;">Adicionar salário</button>
+        </form>
+
+        <div style="border-top:1px solid rgba(255,255,255,.1); padding-top:14px;">
+          <p style="font-weight:800; margin:0 0 10px; font-size:14px; opacity:.9;">Salários cadastrados:</p>
+          {% if salarios %}
+            <div style="max-height:300px; overflow-y:auto;">
+              {% for s in salarios %}
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(22,163,74,.1); border-radius:8px; margin-bottom:8px; border:1px solid rgba(22,163,74,.2);">
+                  <div>
+                    <div style="font-weight:800; font-size:14px;">{{ s.descricao }}</div>
+                    <div style="font-size:12px; color:var(--muted); margin-top:2px;">
+                      R$ {{ "%.2f"|format(s.valor_total) }}/mês • Dia {{ s.data.day }}
+                    </div>
+                  </div>
+                  <form method="POST" action="{{ url_for('excluir_salario', item_id=s.id) }}" style="margin:0;" onsubmit="return confirmarExclusaoGlobal('Tem certeza que deseja excluir o salário {{ s.descricao }}?', () => this.submit())">
+                    <button type="submit" class="btn btn-danger" style="padding:6px 10px; font-size:12px;">✕</button>
+                  </form>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p style="color:var(--muted); font-size:14px; margin:0;">Nenhum salário cadastrado ainda.</p>
+          {% endif %}
+          </div>
+        </div>
+
+        <!-- Aba: Entrada Manual -->
+        <div id="abaManual" style="display:none;">
+          <p style="font-size:13px; color:var(--muted); margin:0 0 14px; line-height:1.5;">
+            Cadastre entradas pontuais (freelas, bônus, vendas, etc). Elas aparecerão normalmente na lista principal.
+          </p>
+
+          <form method="POST" action="{{ url_for('home') }}">
+            <div class="field">
+              <label for="descricaoManual">Descrição</label>
+              <input type="text" id="descricaoManual" name="descricao" placeholder="Ex: Freela, Bônus, Venda" required>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <div class="field">
+                <label for="valorManual">Valor (R$)</label>
+                <input type="number" step="0.01" id="valorManual" name="valor" placeholder="0.00" required>
+              </div>
+
+              <div class="field">
+                <label for="dataManual">Data</label>
+                <input type="date" id="dataManual" name="data" required>
+              </div>
+            </div>
+
+            <input type="hidden" name="tipo" value="entrada">
+            <input type="hidden" name="parcelas" value="1">
+            <input type="hidden" name="tipo_entrada" value="entrada_manual">
+
+            <button type="submit" class="btn btn-primary" style="width:100%; margin-top:8px;">Adicionar entrada</button>
+          </form>
+
+          <div style="border-top:1px solid rgba(255,255,255,.1); padding-top:14px; margin-top:20px;">
+            <p style="font-weight:800; margin:0 0 10px; font-size:14px; opacity:.9;">Últimas entradas manuais:</p>
+            {% if entradas_manuais %}
+              <div style="max-height:300px; overflow-y:auto;">
+                {% for e in entradas_manuais %}
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(37,99,235,.08); border-radius:8px; margin-bottom:8px; border:1px solid rgba(37,99,235,.15);">
+                    <div style="flex:1;">
+                      <div style="font-weight:800; font-size:14px;">{{ e.descricao }}</div>
+                      <div style="font-size:12px; color:var(--muted); margin-top:2px;">
+                        {{ e.data.strftime('%d/%m/%Y') }} • R$ {{ "%.2f"|format(e.valor_total) }}
+                      </div>
+                    </div>
+                    <form method="POST" action="{{ url_for('remover', item_id=e.id) }}" style="margin:0;" onsubmit="return confirmarExclusaoGlobal('Tem certeza que deseja excluir a entrada {{ e.descricao }}?', () => this.submit())">
+                      <button type="submit" class="btn btn-danger" style="padding:6px 10px; font-size:12px;">✕</button>
+                    </form>
+                  </div>
+                {% endfor %}
+              </div>
+              {% if entradas_manuais|length == 10 %}
+                <p style="font-size:12px; color:var(--muted); margin:8px 0 0; text-align:center;">Mostrando as 10 mais recentes. Veja todas na lista principal.</p>
+              {% endif %}
+            {% else %}
+              <p style="color:var(--muted); font-size:14px; margin:0;">Nenhuma entrada manual cadastrada ainda.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="padding:0 14px 14px;">
+        <button type="button" class="btn btn-light" onclick="closeSalariosModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Categorias -->
+  <div class="modal-backdrop" id="modalCategorias" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">📋 Gerenciar Categorias</div>
+        <button class="icon-btn" type="button" aria-label="Fechar" onclick="closeCategoriasModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <form method="POST" action="{{ url_for('criar_categoria', mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca, pagos=('1' if mostrar_pagos else '0')) }}" style="margin-bottom:20px;">
+          <div class="field">
+            <label for="nomeCategoria">Nova categoria</label>
+            <div style="display:flex; gap:10px;">
+              <input type="text" id="nomeCategoria" name="nome" placeholder="Nome da categoria" required style="flex:1;" />
+              <button type="submit" class="btn btn-primary">Criar</button>
+            </div>
+          </div>
+        </form>
+
+        <div style="border-top:1px solid rgba(255,255,255,.1); padding-top:14px;">
+          <p style="font-weight:800; margin:0 0 10px; font-size:14px; opacity:.9;">Categorias existentes:</p>
+          {% if categorias %}
+            <div style="max-height:300px; overflow-y:auto;">
+              {% for c in categorias %}
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:rgba(255,255,255,.04); border-radius:8px; margin-bottom:6px;">
+                  <span>{{ c.nome }}</span>
+                  <form method="POST" action="{{ url_for('excluir_categoria', cat_id=c.id, mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca, pagos=('1' if mostrar_pagos else '0')) }}" style="margin:0;" onsubmit="return confirmarExclusaoGlobal('Tem certeza que deseja excluir a categoria {{ c.nome }}?', () => this.submit())">
+                    <button type="submit" class="btn btn-danger" style="padding:4px 8px; font-size:12px;">✕</button>
+                  </form>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p style="color:var(--muted); font-size:14px; margin:0;">Nenhuma categoria criada ainda.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="modal-actions" style="padding:0 14px 14px;">
+        <button type="button" class="btn btn-light" onclick="closeCategoriasModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Confirmação de Exclusão -->
+  <div class="modal-backdrop" id="modalConfirmarExclusao" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" style="max-width:420px;">
+      <div class="modal-header">
+        <div class="modal-title">⚠️ Confirmar exclusão</div>
+        <button class="icon-btn" type="button" aria-label="Fechar" onclick="closeConfirmarExclusao()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p id="msgConfirmarExclusao" style="margin:0; line-height:1.6;">Tem certeza que deseja remover esta transação?</p>
+      </div>
+
+      <div class="modal-actions" style="padding:0 14px 14px;">
+        <button type="button" class="btn btn-light" onclick="closeConfirmarExclusao()">Cancelar</button>
+        <button type="button" class="btn btn-danger" onclick="acaoConfirmada ? executarAcaoConfirmada() : confirmarExclusao()" style="background:#dc2626; color:#fff;">Remover</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Detalhes -->
+  <div class="modal-backdrop" id="modalDetalhes" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalDetalhesTitle">
+      <div class="modal-header">
+        <div class="modal-title" id="modalDetalhesTitle">Detalhes da transação</div>
+        <button class="icon-btn" type="button" aria-label="Fechar" onclick="closeDetalhesModal()">✕</button>
+      </div>
+
+      <div class="modal-body" id="detalhesConteudo" style="line-height:1.8;">
+        <!-- Conteúdo preenchido via JS -->
+      </div>
+
+      <div class="modal-actions" style="padding:0 14px 14px;">
+        <button type="button" class="btn btn-light" onclick="closeDetalhesModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // ---------- Ordenação ----------
+    function ordenar(coluna) {
+      const url = new URL(window.location.href);
+      const ordenarAtual = url.searchParams.get('ordenar') || 'data';
+      const ordemAtual = url.searchParams.get('ordem') || 'desc';
+
+      // Se clicar na mesma coluna, inverte a ordem
+      if (coluna === ordenarAtual) {
+        url.searchParams.set('ordem', ordemAtual === 'asc' ? 'desc' : 'asc');
+      } else {
+        // Se mudar de coluna, começa com desc
+        url.searchParams.set('ordenar', coluna);
+        url.searchParams.set('ordem', 'desc');
+      }
+
+      url.searchParams.set('pagina', '1'); // Resetar para página 1
+      window.location.href = url.toString();
+    }
+
+    // ---------- Modal + Add/Edit ----------
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const formTransacao = document.getElementById('formTransacao');
+
+    const removerBase = "{{ url_for('remover', item_id=0, mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca, pagos=('1' if mostrar_pagos else '0')) }}";
+    const editarBase  = "{{ url_for('editar', item_id=0, mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca, pagos=('1' if mostrar_pagos else '0')) }}";
+    const marcarPagoBase = "{{ url_for('marcar_pago', item_id=0, mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca) }}";
+
+    let selectedId = null;
+    let selectedDesc = "";
+
+    const btnRemover = document.getElementById('btnRemoverSelecionado');
+    const btnEditar  = document.getElementById('btnEditarSelecionado');
+    const formRemove = document.getElementById('formRemoveSelecionado');
+    const btnMarcarPago = document.getElementById('btnMarcarPago');
+    const formMarcarPago = document.getElementById('formMarcarPago');
+
+    function openModal() {
+      modalBackdrop.classList.add('show');
+      modalBackdrop.setAttribute('aria-hidden', 'false');
+      setTimeout(() => document.getElementById('descricao')?.focus(), 50);
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.remove('show');
+      modalBackdrop.setAttribute('aria-hidden', 'true');
+    }
+
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target.id === 'modalBackdrop') closeModal();
+    });
+
+    function openAddModal(){
+      document.getElementById('modalTitle').textContent = "Nova transação";
+      formTransacao.action = "{{ url_for('home', mes=mes_sel, ano=ano_sel, categoria=(categoria_sel if categoria_sel else ''), busca=busca) }}";
+
+      document.getElementById('descricao').value = "";
+      document.getElementById('valor').value = "";
+      document.getElementById('parcelas').value = 1;
+      document.getElementById('tipo').value = "entrada";
+      document.getElementById('categoria_id').value = "";
+      document.getElementById('observacoes').value = "";
+      document.getElementById('recorrente').checked = false;
+
+      const di = document.getElementById('data');
+      const d = new Date();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      di.value = `${d.getFullYear()}-${mm}-${dd}`;
+
+      openModal();
+    }
+
+    function openEditModal(){
+      if(!selectedId) return;
+
+      const tr = document.querySelector(`tr.row-select.selected`);
+      if(!tr) return;
+
+      document.getElementById('modalTitle').textContent = "Editar transação";
+      formTransacao.action = editarBase.replace(/\/0(\?|$)/, "/" + selectedId + "$1");
+
+      document.getElementById('descricao').value = tr.dataset.descricao || "";
+      document.getElementById('valor').value = tr.dataset.valor || "";
+      document.getElementById('tipo').value = tr.dataset.tipo || "entrada";
+      document.getElementById('data').value = tr.dataset.data || "";
+      document.getElementById('parcelas').value = tr.dataset.parcelas || 1;
+      document.getElementById('categoria_id').value = tr.dataset.categoria || "";
+      document.getElementById('observacoes').value = tr.dataset.observacoes || "";
+      document.getElementById('recorrente').checked = tr.dataset.recorrente === 'true';
+
+      openModal();
+    }
+
+    // ---------- Limpar seleção ----------
+    function clearSelection() {
+      document.querySelectorAll('tr.row-select.selected')
+        .forEach(x => x.classList.remove('selected'));
+
+      selectedId = null;
+      selectedDesc = "";
+
+      btnRemover.disabled = true;
+      btnEditar.disabled = true;
+      if (btnMarcarPago) btnMarcarPago.disabled = true;
+    }
+
+    // ---------- Seleção de linha ----------
+    document.querySelectorAll('tr.row-select').forEach((tr) => {
+      tr.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        document.querySelectorAll('tr.row-select.selected').forEach((x) => x.classList.remove('selected'));
+        tr.classList.add('selected');
+
+        selectedId = tr.dataset.id;
+        selectedDesc = tr.dataset.descricao || "";
+
+        btnRemover.disabled = false;
+        btnEditar.disabled = false;
+        if (btnMarcarPago) btnMarcarPago.disabled = false;
+      });
+
+      // Duplo clique para abrir detalhes
+      tr.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        openDetalhesModal(tr);
+      });
+    });
+
+    // Clicar no fundo / área vazia deseleciona
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('table.grid')) return;
+      if (e.target.closest('.bottom-actions')) return;
+      if (e.target.closest('.modal')) return;
+      if (e.target.closest('.search')) return;
+      if (e.target.closest('.navbar')) return;
+      if (e.target.closest('.topline')) return;
+
+      clearSelection();
+    });
+
+    // ---------- Remover com confirmação ----------
+    const modalConfirmarExclusao = document.getElementById('modalConfirmarExclusao');
+    const msgConfirmarExclusao = document.getElementById('msgConfirmarExclusao');
+
+    formRemove.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!selectedId) return;
+
+      const msg = selectedDesc
+        ? `Tem certeza que deseja remover "${selectedDesc}"?`
+        : "Tem certeza que deseja remover a transação selecionada?";
+
+      msgConfirmarExclusao.textContent = msg;
+      modalConfirmarExclusao.classList.add('show');
+      modalConfirmarExclusao.setAttribute('aria-hidden', 'false');
+    });
+
+    function closeConfirmarExclusao() {
+      modalConfirmarExclusao.classList.remove('show');
+      modalConfirmarExclusao.setAttribute('aria-hidden', 'true');
+    }
+
+    function confirmarExclusao() {
+      formRemove.action = removerBase.replace(/\/0(\?|$)/, "/" + selectedId + "$1");
+      formRemove.submit();
+    }
+
+    modalConfirmarExclusao.addEventListener('click', (e) => {
+      if (e.target.id === 'modalConfirmarExclusao') closeConfirmarExclusao();
+    });
+
+    // ---------- Função global de confirmação de exclusão ----------
+    let acaoConfirmada = null;
+
+    function confirmarExclusaoGlobal(mensagem, callback) {
+      msgConfirmarExclusao.textContent = mensagem;
+      acaoConfirmada = callback;
+      modalConfirmarExclusao.classList.add('show');
+      modalConfirmarExclusao.setAttribute('aria-hidden', 'false');
+      return false; // Previne submissão imediata
+    }
+
+    function executarAcaoConfirmada() {
+      if (acaoConfirmada) {
+        acaoConfirmada();
+        acaoConfirmada = null;
+      }
+      closeConfirmarExclusao();
+    }
+
+    // ---------- Marcar como pago ----------
+    if (formMarcarPago) {
+      formMarcarPago.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!selectedId) return;
+
+        formMarcarPago.action = marcarPagoBase.replace(/\/0(\?|$)/, "/" + selectedId + "$1");
+        formMarcarPago.submit();
+      });
+    }
+
+    // ---------- Gráfico (modo opcional) ----------
+    const ctx = document.getElementById('graficoDespesas').getContext('2d');
+    const labels = {{ graf_labels | tojson }};
+    const entradas = {{ graf_entradas | tojson }};
+    const despesas = {{ graf_despesas | tojson }};
+
+    const saldoMes = entradas.map((v, i) => Number((v - (despesas[i] || 0)).toFixed(2)));
+    const movTotal  = entradas.map((v, i) => Number((v + (despesas[i] || 0)).toFixed(2)));
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Entradas (R$)', data: entradas, tension: 0.25, pointRadius: 3, borderWidth: 2 },
+          { label: 'Despesas (R$)', data: despesas, tension: 0.25, pointRadius: 3, borderWidth: 2 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+    function aplicarModoGrafico(modo) {
+      if (modo === 'separado') {
+        chart.data.datasets = [
+          { label: 'Entradas (R$)', data: entradas, tension: 0.25, pointRadius: 3, borderWidth: 2 },
+          { label: 'Despesas (R$)', data: despesas, tension: 0.25, pointRadius: 3, borderWidth: 2 }
+        ];
+        chart.options.scales.y.beginAtZero = true;
+      } else if (modo === 'saldo') {
+        chart.data.datasets = [
+          { label: 'Saldo do mês (R$)', data: saldoMes, tension: 0.25, pointRadius: 3, borderWidth: 2 }
+        ];
+        chart.options.scales.y.beginAtZero = false;
+      } else {
+        chart.data.datasets = [
+          { label: 'Movimentação total (R$)', data: movTotal, tension: 0.25, pointRadius: 3, borderWidth: 2 }
+        ];
+        chart.options.scales.y.beginAtZero = true;
+      }
+      chart.update();
+    }
+
+    const sel = document.getElementById('modoGrafico');
+    sel.addEventListener('change', () => aplicarModoGrafico(sel.value));
+    aplicarModoGrafico('separado');
+
+    // ---------- Modal de Detalhes ----------
+    const modalDetalhes = document.getElementById('modalDetalhes');
+
+    function openDetalhesModal(tr) {
+      const descricao = tr.dataset.descricao || "";
+      const valor = tr.dataset.valor || "0";
+      const tipo = tr.dataset.tipo || "";
+      const data = tr.dataset.data || "";
+      const parcelas = parseInt(tr.dataset.parcelas || "1");
+      const categoria = tr.dataset.categoriaNome || "Sem categoria";
+      const valorParcela = tr.dataset.valorParcela || "0";
+      const valorTotal = tr.dataset.valorTotal || "0";
+      const observacoes = tr.dataset.observacoes || "";
+      const recorrente = tr.dataset.recorrente === 'true';
+
+      // Data de compra
+      const dataCompra = data ? new Date(data + 'T00:00:00') : null;
+      const dataCompraFormatada = dataCompra ? dataCompra.toLocaleDateString('pt-BR') : "";
+      
+      // Calcular data final das parcelas
+      let dataFinalFormatada = "";
+      if (dataCompra && parcelas > 1) {
+        const dataFinal = new Date(dataCompra);
+        dataFinal.setMonth(dataFinal.getMonth() + (parcelas - 1));
+        dataFinalFormatada = dataFinal.toLocaleDateString('pt-BR');
+      }
+
+      const tipoTexto = tipo === 'entrada' ? 'Entrada' : 'Saída';
+
+      let html = `
+        <p><strong>Descrição:</strong> ${descricao}</p>
+        <p><strong>Categoria:</strong> ${categoria}</p>
+        <p><strong>Tipo:</strong> ${tipoTexto}</p>
+      `;
+
+      if (recorrente) {
+        html += `
+          <p><strong>🔁 Mensalidade recorrente</strong></p>
+          <p><strong>Data de início:</strong> ${dataCompraFormatada}</p>
+          <p><strong>Valor mensal:</strong> R$ ${valorParcela}</p>
+        `;
+      } else {
+        html += `
+          <p><strong>Data da compra:</strong> ${dataCompraFormatada}</p>
+          <p><strong>Parcelas:</strong> ${parcelas}x</p>
+        `;
+
+        if (parcelas > 1 && dataFinalFormatada) {
+          html += `<p><strong>Data final das parcelas:</strong> ${dataFinalFormatada}</p>`;
+        }
+
+        html += `
+          <p><strong>Valor da parcela:</strong> R$ ${valorParcela}</p>
+          <p><strong>Valor total:</strong> R$ ${valorTotal}</p>
+        `;
+      }
+
+      if (observacoes) {
+        html += `<p><strong>Observações:</strong><br>${observacoes.replace(/\n/g, '<br>')}</p>`;
+      }
+
+      document.getElementById('detalhesConteudo').innerHTML = html;
+      modalDetalhes.classList.add('show');
+      modalDetalhes.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeDetalhesModal() {
+      modalDetalhes.classList.remove('show');
+      modalDetalhes.setAttribute('aria-hidden', 'true');
+    }
+
+    modalDetalhes.addEventListener('click', (e) => {
+      if (e.target.id === 'modalDetalhes') closeDetalhesModal();
+    });
+
+    // ---------- Modal de Categorias ----------
+    const modalCategorias = document.getElementById('modalCategorias');
+
+    function openCategoriasModal() {
+      modalCategorias.classList.add('show');
+      modalCategorias.setAttribute('aria-hidden', 'false');
+      setTimeout(() => document.getElementById('nomeCategoria')?.focus(), 50);
+    }
+
+    function closeCategoriasModal() {
+      modalCategorias.classList.remove('show');
+      modalCategorias.setAttribute('aria-hidden', 'true');
+    }
+
+    modalCategorias.addEventListener('click', (e) => {
+      if (e.target.id === 'modalCategorias') closeCategoriasModal();
+    });
+
+    // ---------- Modal de Salários ----------
+    const modalSalarios = document.getElementById('modalSalarios');
+
+    function openSalariosModal() {
+      modalSalarios.classList.add('show');
+      modalSalarios.setAttribute('aria-hidden', 'false');
+      setTimeout(() => document.getElementById('descricaoSalario')?.focus(), 50);
+    }
+
+    function closeSalariosModal() {
+      modalSalarios.classList.remove('show');
+      modalSalarios.setAttribute('aria-hidden', 'true');
+    }
+
+    modalSalarios.addEventListener('click', (e) => {
+      if (e.target.id === 'modalSalarios') closeSalariosModal();
+    });
+
+    function switchTabSalario(aba) {
+      const tabAutomatico = document.getElementById('tabAutomatico');
+      const tabManual = document.getElementById('tabManual');
+      const abaAutomatico = document.getElementById('abaAutomatico');
+      const abaManual = document.getElementById('abaManual');
+
+      if (aba === 'automatico') {
+        // Ativar aba automático
+        tabAutomatico.style.borderBottom = '3px solid #16a34a';
+        tabAutomatico.style.color = 'var(--text)';
+        tabManual.style.borderBottom = '3px solid transparent';
+        tabManual.style.color = 'var(--muted)';
+        abaAutomatico.style.display = 'block';
+        abaManual.style.display = 'none';
+      } else {
+        // Ativar aba manual
+        tabManual.style.borderBottom = '3px solid #16a34a';
+        tabManual.style.color = 'var(--text)';
+        tabAutomatico.style.borderBottom = '3px solid transparent';
+        tabAutomatico.style.color = 'var(--muted)';
+        abaManual.style.display = 'block';
+        abaAutomatico.style.display = 'none';
+
+        // Auto-preencher data de hoje
+        const hoje = new Date();
+        const dataInput = document.getElementById('dataManual');
+        if (dataInput && !dataInput.value) {
+          const ano = hoje.getFullYear();
+          const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+          const dia = String(hoje.getDate()).padStart(2, '0');
+          dataInput.value = `${ano}-${mes}-${dia}`;
+        }
+      }
+    }
+
+    // ---------- Modal de Filtros Avançados ----------
+    const modalFiltros = document.getElementById('modalFiltros');
+
+    function openFiltrosModal() {
+      modalFiltros.classList.add('show');
+      modalFiltros.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeFiltrosModal() {
+      modalFiltros.classList.remove('show');
+      modalFiltros.setAttribute('aria-hidden', 'true');
+    }
+
+    function limparFiltros() {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('filtro_tipo');
+      url.searchParams.delete('cat_incluir');
+      url.searchParams.delete('cat_excluir');
+      url.searchParams.set('pagina', '1');
+      window.location.href = url.toString();
+    }
+
+    modalFiltros.addEventListener('click', (e) => {
+      if (e.target.id === 'modalFiltros') closeFiltrosModal();
+    });
+
+    // Converter checkboxes para hidden inputs antes de submeter
+    const formFiltros = modalFiltros.querySelector('form');
+    formFiltros.addEventListener('submit', (e) => {
+      // Incluir categorias
+      const incluirChecked = Array.from(formFiltros.querySelectorAll('input[name="cat_incluir_check"]:checked'))
+        .map(cb => cb.value);
+      
+      let inputIncluir = formFiltros.querySelector('input[name="cat_incluir"]');
+      if (!inputIncluir) {
+        inputIncluir = document.createElement('input');
+        inputIncluir.type = 'hidden';
+        inputIncluir.name = 'cat_incluir';
+        formFiltros.appendChild(inputIncluir);
+      }
+      inputIncluir.value = incluirChecked.join(',');
+
+      // Excluir categorias
+      const excluirChecked = Array.from(formFiltros.querySelectorAll('input[name="cat_excluir_check"]:checked'))
+        .map(cb => cb.value);
+      
+      let inputExcluir = formFiltros.querySelector('input[name="cat_excluir"]');
+      if (!inputExcluir) {
+        inputExcluir = document.createElement('input');
+        inputExcluir.type = 'hidden';
+        inputExcluir.name = 'cat_excluir';
+        formFiltros.appendChild(inputExcluir);
+      }
+      inputExcluir.value = excluirChecked.join(',');
+    });
+  </script>
+</body>
+</html>

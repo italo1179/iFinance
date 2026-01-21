@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iFinance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='ifinance.ico') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='ifinance.ico') }}">
+</head>
+<body>
+  <div class="container">
+    <div style="text-align:center; margin-bottom:20px;">
+      <img src="{{ url_for('static', filename='ifinance.ico') }}" alt="iFinance" style="width:64px; height:64px; border-radius:12px;">
+    </div>
+    <h1 style="text-align:center;">iFinance</h1>
+    <p style="text-align:center;">Entre para acessar seus lançamentos em qualquer dispositivo.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat,msg in messages %}
+          {% if cat != 'ok' or 'Bem-vindo' not in msg %}
+          <div class="alert {% if cat=='error' %}alert-error{% elif cat=='ok' %}alert-ok{% else %}alert-info{% endif %}">
+            {{ msg }}
+          </div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required autocomplete="email" />
+
+      <div style="height:12px;"></div>
+
+      <label for="password">Senha</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password" />
+
+      <button type="submit">Entrar</button>
+    </form>
+
+    <p class="hint" style="text-align:center;">
+      Não tem conta?
+      <a href="{{ url_for('register') }}">Criar agora</a>
+    </p>
+  </div>
+</body>
+</html>
